@@ -52,6 +52,8 @@ abstract class RbacController extends \yii\console\Controller
 	public $defaultAction = 'show';
 
 
+	public $table=false;
+
 	/**
 	 * The method must returns an instance of a class with the interface \yii\web\Identity by user ID.
 	 */
@@ -62,6 +64,26 @@ abstract class RbacController extends \yii\console\Controller
 	 */
 	abstract function findIdentityByUsername($username);
 
+
+	/**
+	 * Returns user fileds to display
+	 * @return array
+	 */
+	public function showUserFields($userFields)
+	{
+		return $userFields;
+	}
+
+
+	public function options($actionID)
+	{
+		if($actionID == 'show')
+		{
+			return ['table'];
+		}
+
+		return parent::options($actionID);
+	}
 
 	/**
 	 * Returns rbac manager
@@ -110,7 +132,8 @@ abstract class RbacController extends \yii\console\Controller
 	{
 		$config = $this->getConfig();
 
-		print "RBAC config:\n\n";
+		print "RBAC config:\n";
+		print \Yii::getAlias($this->getConfigPath())."\n\n";
 
 		print_r($config);
 
@@ -548,31 +571,56 @@ abstract class RbacController extends \yii\console\Controller
 
 		if($roles) foreach($roles as $role)
 		{
-			print $role->name." (".$role->description.")\n";
+			print $role->name." (".$role->description."):\n";
+
+
+			$rows = [];
 
 			$roleUsers = $authManager->getUserIdsByRole($role->name);
 
-			if($roleUsers) foreach($roleUsers as $userId)
+			if($roleUsers)
 			{
-				$user = $this->findIdentityById($userId);
-
-				if($user)
+				foreach($roleUsers as $userId)
 				{
-					if(method_exists($user, 'toArray'))
+					$user = $this->findIdentityById($userId);
+
+					if($user)
 					{
-						$userArr = $user->toArray();
-						print " - ".implode("\t", $userArr)."\n";
+						if(method_exists($user, 'toArray'))
+						{
+							$userArr = $this->showUserFields( $user->toArray() );
+
+							if(!$this->table)
+							{
+								print " - ".implode("\t", $userArr)."\n";
+							}
+							else
+							{
+								$keys = \array_keys($userArr);
+								$rows[] = $userArr;
+							}
+						}
+						else
+						{
+							print " - ".$user->getId()." (add a method ".get_class($user)."::toArray() for more information)\n";
+						}
 					}
-					else
-					{
-						print " - ".$user->getId()." (add a method ".get_class($user)."::toArray() for more information)\n";
-					}
+				}
+
+				if($this->table)
+				{
+					$table = new \yii\console\widgets\Table();
+					$table->setHeaders($keys);
+					$table->setRows($rows);
+					print $table->run();
 				}
 			}
 			else
 			{
 				print "...no users\n";
 			}
+
+
 
 			print "\n";
 		}
