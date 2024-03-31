@@ -1,0 +1,23 @@
+{
+	"name": "gozoro/yii2-rbac-console",
+	"description": "RBAC configuration and managment tool in the console.",
+	"keywords":["yii2", "rbac", "console", "auth", "authManager"],
+	"homepage": "https://github.com/gozoro/yii2-rbac-console",
+	"type": "yii2-extension",
+	"license": "MIT",
+	"authors": [
+		{
+			"name": "Gozoro",
+			"email": "gozoro@yandex.ru"
+		}
+	],
+	"require": {
+		"php": ">=5.5.9",
+		"yiisoft/yii2": "~2.0.0"
+	},
+	"autoload": {
+		"psr-4": {
+			"gozoro\\rbac\\console\\": "src"
+		}
+	}
+}
