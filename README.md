@@ -49,7 +49,9 @@ You can use it after adding new roles or removing not need roles.
 
 - `rbac/show-config` Displays config (default config: `@app/config/rbac.php`).
 
-- `rbac/roles` Displays a list of roles.
+- `rbac/roles` Displays a list of roles from AuthManager.
+
+- `rbac/permissions` Displays a list of permissions from AuthManager.
 
 - `rbac/show` (default) Displays a list of roles and users.
 

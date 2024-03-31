@@ -805,31 +805,73 @@ abstract class RbacController extends \yii\console\Controller
 
 
 	/**
-	 * Displays a list of roles in this application
+	 * Displays a list of roles from AuthManager.
 	 */
 	public function actionRoles()
 	{
 		$authManager = $this->getAuthManager();
-		$roles = $authManager->getRoles();
+		$items = $authManager->getRoles();
 
 		print "Roles:\n";
 
-		if(empty($roles))
+		if(empty($items))
 		{
 			print "...empty\n";
 		}
 		else
 		{
-			foreach($roles as $role)
+			$rows = [];
+			foreach($items as $item)
 			{
-				print $role->name;
-
-				if(!empty($role->description))
-				{
-					print "\t".$role->description;
-				}
-				print "\n";
+				$rows[] = [
+					$item->name,
+					$item->description
+				];
 			}
+
+
+			$table = new \yii\console\widgets\Table();
+			$table->setHeaders(['name', 'description']);
+			$table->setRows($rows);
+			print $table->run();
+		}
+
+		print "\n";
+
+		return ExitCode::OK;
+	}
+
+
+	/**
+	 * Displays a list of permissions from AuthManager.
+	 */
+	public function actionPermissions()
+	{
+		$authManager = $this->getAuthManager();
+		$items = $authManager->getPermissions();
+
+		print "Permissions:\n";
+
+		if(empty($items))
+		{
+			print "...empty\n";
+		}
+		else
+		{
+			$rows = [];
+			foreach($items as $item)
+			{
+				$rows[] = [
+					$item->name,
+					$item->description
+				];
+			}
+
+
+			$table = new \yii\console\widgets\Table();
+			$table->setHeaders(['name', 'description']);
+			$table->setRows($rows);
+			print $table->run();
 		}
 
 		print "\n";
