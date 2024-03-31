@@ -52,7 +52,7 @@ abstract class RbacController extends \yii\console\Controller
 	public $defaultAction = 'show';
 
 
-	public $table=false;
+
 
 	/**
 	 * The method must returns an instance of a class with the interface \yii\web\Identity by user ID.
@@ -72,17 +72,6 @@ abstract class RbacController extends \yii\console\Controller
 	public function showUserFields($userFields)
 	{
 		return $userFields;
-	}
-
-
-	public function options($actionID)
-	{
-		if($actionID == 'show')
-		{
-			return ['table'];
-		}
-
-		return parent::options($actionID);
 	}
 
 	/**
@@ -130,10 +119,10 @@ abstract class RbacController extends \yii\console\Controller
 	 */
 	public function actionShowConfig()
 	{
-		$config = $this->getConfig();
-
 		print "RBAC config:\n";
 		print \Yii::getAlias($this->getConfigPath())."\n\n";
+
+		$config = $this->getConfig();
 
 		print_r($config);
 
@@ -555,11 +544,6 @@ abstract class RbacController extends \yii\console\Controller
 	}
 
 
-
-
-
-
-
 	/**
 	 * Displays a list of roles and users
 	 */
@@ -568,11 +552,9 @@ abstract class RbacController extends \yii\console\Controller
 		$authManager = $this->getAuthManager();
 		$roles       = $authManager->getRoles();
 
-
 		if($roles) foreach($roles as $role)
 		{
 			print $role->name." (".$role->description."):\n";
-
 
 			$rows = [];
 
@@ -589,31 +571,24 @@ abstract class RbacController extends \yii\console\Controller
 						if(method_exists($user, 'toArray'))
 						{
 							$userArr = $this->showUserFields( $user->toArray() );
-
-							if(!$this->table)
-							{
-								print " - ".implode("\t", $userArr)."\n";
-							}
-							else
-							{
-								$keys = \array_keys($userArr);
-								$rows[] = $userArr;
-							}
+							$keys = \array_keys($userArr);
+							$rows[] = $userArr;
 						}
 						else
 						{
-							print " - ".$user->getId()." (add a method ".get_class($user)."::toArray() for more information)\n";
+							$keys = ['id', ''];
+							$rows[] = [
+								'id' => $user->getId(),
+								"add a method ".get_class($user)."::toArray() for more information"
+							];
 						}
 					}
 				}
 
-				if($this->table)
-				{
-					$table = new \yii\console\widgets\Table();
-					$table->setHeaders($keys);
-					$table->setRows($rows);
-					print $table->run();
-				}
+				$table = new \yii\console\widgets\Table();
+				$table->setHeaders($keys);
+				$table->setRows($rows);
+				print $table->run();
 			}
 			else
 			{
@@ -901,15 +876,18 @@ abstract class RbacController extends \yii\console\Controller
 		$permissions = $authManager->getPermissionsByUser($userId);
 
 		print "Roles of [$username]:\n";
-		if($roles) foreach($roles as $role)
+		if($roles)
 		{
-			print $role->name;
-
-			if(!empty($role->description))
+			$rows = [];
+			foreach($roles as $role)
 			{
-				print "\t".$role->description;
+				$rows[] = [$role->name, $role->description];
 			}
-			print "\n";
+
+			$table = new \yii\console\widgets\Table();
+			$table->setHeaders(['name', 'description']);
+			$table->setRows($rows);
+			print $table->run();
 		}
 		else
 		{
@@ -919,15 +897,18 @@ abstract class RbacController extends \yii\console\Controller
 		print "\n";
 
 		print "Permissions of [$username]:\n";
-		if($permissions) foreach($permissions as $perm)
+		if($permissions)
 		{
-			print $perm->name;
-
-			if(!empty($perm->description))
+			$rows = [];
+			foreach($permissions as $perm)
 			{
-				print "\t".$perm->description;
+				$rows[] = [$perm->name, $perm->description];
 			}
-			print "\n";
+
+			$table = new \yii\console\widgets\Table();
+			$table->setHeaders(['name', 'description']);
+			$table->setRows($rows);
+			print $table->run();
 		}
 		else
 		{
