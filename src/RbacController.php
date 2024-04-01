@@ -88,7 +88,7 @@ abstract class RbacController extends \yii\console\Controller
 	 */
 	protected function error($errMessage)
 	{
-		$this->stdout("$errMessage\n", Console::FG_RED);
+		$this->stdout("$errMessage\n\n", Console::FG_RED);
 		return ExitCode::UNSPECIFIED_ERROR;
 	}
 
@@ -303,11 +303,11 @@ abstract class RbacController extends \yii\console\Controller
 		{
 			$userRoles[ $role->name ] = $authManager->getUserIdsByRole($role->name);
 		}
-		print "OK\n";
+		$this->stdout("OK\n", Console::FG_GREEN);
 
 		print "Clear RBAC data: ";
 		$authManager->removeAll();
-		print "OK\n";
+		$this->stdout("OK\n", Console::FG_GREEN);
 
 		$rules       = [];
 		$permissions = [];
@@ -335,7 +335,7 @@ abstract class RbacController extends \yii\console\Controller
 
 
 				$authManager->add($rule);
-				print " + add rule [".$rule->name."]\n";
+				$this->stdout(" + add rule [".$rule->name."]\n", Console::FG_GREEN);
 
 				$items = (array)$items;
 				foreach($items as $item)
@@ -346,7 +346,7 @@ abstract class RbacController extends \yii\console\Controller
 					}
 					else
 					{
-						print " - error: item of rule [".$rule->name."] must be string.\n";
+						$this->stdout(" - error: item of rule [".$rule->name."] must be string.\n", Console::FG_RED);
 					}
 				}
 			}
@@ -402,7 +402,7 @@ abstract class RbacController extends \yii\console\Controller
 
 			$authManager->add( $permission );
 			$permissions[$permissionName] = $permission;
-			print " + add permission [".$permission->name."]$withRule - ".$permission->description."\n";
+			$this->stdout(" + add permission [".$permission->name."]$withRule - ".$permission->description."\n", Console::FG_GREEN);
 		}
 
 
@@ -457,7 +457,7 @@ abstract class RbacController extends \yii\console\Controller
 
 			$authManager->add( $role );
 			$roles[ $roleName ] = $role;
-			print " + add role [".$role->name."]$withRule - ".$role->description."\n";
+			$this->stdout(" + add role [".$role->name."]$withRule - ".$role->description."\n", Console::FG_GREEN);
 		}
 
 
@@ -478,21 +478,21 @@ abstract class RbacController extends \yii\console\Controller
 						if(isset($permissions[$accessItemName]))
 						{
 							$authManager->addChild($item, $permissions[$accessItemName]);
-							print " + permission [".$item->name."] has child permission [".$permissions[$accessItemName]->name."]\n";
+							$this->stdout(" + permission [".$item->name."] has child permission [".$permissions[$accessItemName]->name."]\n", Console::FG_GREEN);
 						}
 						elseif(isset($roles[$accessItemName]))
 						{
 							$authManager->addChild($item, $roles[$accessItemName]);
-							print " + permission [".$item->name."] has child role [".$roles[$accessItemName]->name."]\n";
+							$this->stdout(" + permission [".$item->name."] has child role [".$roles[$accessItemName]->name."]\n", Console::FG_GREEN);
 						}
 						else
 						{
-							print " - error: item [$accessItemName] not found in RBAC config.\n";
+							$this->stdout(" - error: item [$accessItemName] not found in RBAC config.\n", Console::FG_RED);
 						}
 					}
 					else
 					{
-						print " - error: access item is not a string.";
+						$this->stdout(" - error: access item is not a string.", Console::FG_RED);
 					}
 				}
 			}
@@ -509,28 +509,28 @@ abstract class RbacController extends \yii\console\Controller
 						if(isset($permissions[$accessItemName]))
 						{
 							$authManager->addChild($item, $permissions[$accessItemName]);
-							print " + role [".$item->name."] has child permission [".$permissions[$accessItemName]->name."]\n";
+							$this->stdout(" + role [".$item->name."] has child permission [".$permissions[$accessItemName]->name."]\n",  Console::FG_GREEN);
 						}
 						elseif(isset($roles[$accessItemName]))
 						{
 							$authManager->addChild($item, $roles[$accessItemName]);
-							print " + role [".$item->name."] has child role [".$roles[$accessItemName]->name."]\n";
+							$this->stdout(" + role [".$item->name."] has child role [".$roles[$accessItemName]->name."]\n", Console::FG_GREEN);
 						}
 						else
 						{
-							print " - error: item [$accessItemName] not found in RBAC config.\n";
+							$this->stdout(" - error: item [$accessItemName] not found in RBAC config.\n", Console::FG_RED);
 						}
 					}
 					else
 					{
-						print " - error: access item is not a string.";
+						$this->stdout(" - error: access item is not a string.", Console::FG_RED);
 					}
 				}
 
 			}
 			else
 			{
-				print " - error: item name [$itemName] not found.\n";
+				$this->stdout(" - error: item name [$itemName] not found.\n",  Console::FG_RED);
 			}
 		}
 
@@ -546,9 +546,7 @@ abstract class RbacController extends \yii\console\Controller
 				$authManager->assign($role, $userId);
 			}
 		}
-		print "OK\n";
-
-
+		$this->stdout("OK\n", Console::FG_GREEN);
 
 		print "\n";
 		return ExitCode::OK;
@@ -647,9 +645,7 @@ abstract class RbacController extends \yii\console\Controller
 
 		if(empty($item))
 		{
-				print "Role [$rolename] is not found.\n\n";
-				print "Permission [$rolename] is not found.\n\n";
-				return ExitCode::DATAERR;
+			return $this->error("Role [$rolename] is not found.\nPermission [$rolename] is not found.");
 		}
 
 
@@ -657,8 +653,7 @@ abstract class RbacController extends \yii\console\Controller
 
 		if(is_null($identity))
 		{
-			print "User [$username] is not found.\n\n";
-			return ExitCode::DATAERR;
+			return $this->error("User [$username] is not found.");
 		}
 
 		$userId = $identity->getId();
@@ -669,8 +664,7 @@ abstract class RbacController extends \yii\console\Controller
 			$userRoles = $authManager->getRolesByUser($userId);
 			if(isset($userRoles[$rolename]))
 			{
-				print "User [$username] already has a role [$rolename].\n\n";
-				return ExitCode::DATAERR;
+				return $this->error("User [$username] already has a role [$rolename].");
 			}
 		}
 		else
@@ -678,8 +672,7 @@ abstract class RbacController extends \yii\console\Controller
 			$userPermissions = $authManager->getPermissionsByUser($userId);
 			if(isset($userPermissions[$rolename]))
 			{
-				print "User [$username] already has a permission [$rolename].\n\n";
-				return ExitCode::DATAERR;
+				return $this->error("User [$username] already has a permission [$rolename].");
 			}
 		}
 
@@ -687,13 +680,12 @@ abstract class RbacController extends \yii\console\Controller
 
 		if($authManager->assign($item, $userId))
 		{
-			print "The user [$username] was successfully assigned to the $type [$rolename].\n\n";
+			$this->stdout("The user [$username] was successfully assigned to the $type [$rolename].\n", Console::FG_GREEN);
 			return ExitCode::OK;
 		}
 		else
 		{
-			print "The $type failed assigned.\n";
-			return ExitCode::UNSPECIFIED_ERROR;
+			return $this->error("The $type failed assigned.");
 		}
 
 		return ExitCode::OK;
@@ -729,9 +721,7 @@ abstract class RbacController extends \yii\console\Controller
 
 		if(empty($item))
 		{
-				print "Role [$rolename] is not found.\n\n";
-				print "Permission [$rolename] is not found.\n\n";
-				return ExitCode::DATAERR;
+			return $this->error("Role [$rolename] is not found.\nPermission [$rolename] is not found.");
 		}
 
 
@@ -739,8 +729,7 @@ abstract class RbacController extends \yii\console\Controller
 
 		if(is_null($identity))
 		{
-			print "User [$username] is not found.\n\n";
-			return ExitCode::DATAERR;
+			return $this->error("User [$username] is not found.");
 		}
 
 		$userId = $identity->getId();
@@ -748,13 +737,12 @@ abstract class RbacController extends \yii\console\Controller
 
 		if($authManager->revoke($item, $userId))
 		{
-			print "The $type [$rolename] successfully revoked from user [$username].\n";
+			$this->stdout("The $type [$rolename] successfully revoked from user [$username].\n\n", Console::FG_GREEN);
 			return ExitCode::OK;
 		}
 		else
 		{
-			print "The $type failed revoked.\n";
-			return ExitCode::UNSPECIFIED_ERROR;
+			return $this->error("The $type failed revoked.");
 		}
 	}
 
@@ -770,19 +758,18 @@ abstract class RbacController extends \yii\console\Controller
 
 		if(is_null($identity))
 		{
-			print "User [$username] is not found.\n\n";
-			return ExitCode::DATAERR;
+			return $this->error("User [$username] is not found.\n\n");
 		}
 
 		$userId = $identity->getId();
 
 		if($authManager->revokeAll($userId))
 		{
-			print "Revoked all roles from user [$username].\n";
+			$this->stdout("Revoked all roles from user [$username].\n\n",  Console::FG_GREEN);
 		}
 		else
 		{
-			print "Failed revoke from [$username].\n";
+			$this->stdout("Failed revoke from [$username].\n\n", Console::FG_RED);
 		}
 
 		print "\n";
@@ -823,7 +810,6 @@ abstract class RbacController extends \yii\console\Controller
 		}
 
 		print "\n";
-
 		return ExitCode::OK;
 	}
 
@@ -877,8 +863,7 @@ abstract class RbacController extends \yii\console\Controller
 
 		if(is_null($identity))
 		{
-			$this->stdout("User [$username] is not found.\n", Console::FG_RED);
-			return ExitCode::DATAERR;
+			return $this->error("User [$username] is not found.");
 		}
 
 		$userId = $identity->getId();
