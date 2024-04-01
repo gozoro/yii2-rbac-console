@@ -291,6 +291,13 @@ abstract class RbacController extends \yii\console\Controller
 	 */
 	public function actionInit()
 	{
+		$configfile = Yii::getAlias( $this->getConfigPath() );
+		if(!$this->confirm("Initialize RBAC scheme from $configfile."))
+		{
+			return ExitCode::OK;
+		}
+
+
  		$config      = $this->getConfig();
  		$authManager = $this->getAuthManager();
  		$userRoles   = [];
