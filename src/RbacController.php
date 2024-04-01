@@ -6,7 +6,7 @@ namespace gozoro\rbac\console;
 
 use Yii;
 use yii\console\ExitCode;
-use yii\console\Exception;
+use yii\helpers\Console;
 
 use yii\rbac\Permission;
 use yii\rbac\Role;
@@ -84,6 +84,15 @@ abstract class RbacController extends \yii\console\Controller
 	}
 
 	/**
+	 * Print error and exit
+	 */
+	protected function error($errMessage)
+	{
+		$this->stdout("$errMessage\n", Console::FG_RED);
+		return ExitCode::UNSPECIFIED_ERROR;
+	}
+
+	/**
 	 * Returns path to RBAC-config
 	 * @return string
 	 */
@@ -92,11 +101,9 @@ abstract class RbacController extends \yii\console\Controller
 		return '@app/config/rbac.php';
 	}
 
-
 	/**
 	 * Returns config array
 	 * @return array
-	 * @throws \yii\console\Exception
 	 */
 	public function getConfig()
 	{
@@ -109,7 +116,7 @@ abstract class RbacController extends \yii\console\Controller
 		}
 		else
 		{
-			throw new Exception("RBAC config $configfile is not exist.");
+			return $this->error("RBAC config $configfile is not exist.");
 		}
 	}
 
@@ -158,21 +165,26 @@ abstract class RbacController extends \yii\console\Controller
 					elseif(!\is_string($key) and \is_array($val) )
 					{
 						if(empty($val['name']))
-							throw new Exception("The permissions[$key] value array must have the [name] key.");
+						{
+							return $this->error("The permissions[$key] value array must have the [name] key.");
+
+						}
 					}
 					else
 					{
-						throw new Exception("The permissions[$key] value must be string or array or instance of Permission.");
+						return $this->error("The permissions[$key] value must be string or array or instance of Permission.");
 					}
 				}
 			}
 			else
 			{
-				throw new Exception("The [permissions] must be array.");
+				return $this->error("The [permissions] must be array.");
 			}
 		}
 		else
-			throw new Exception("The [permissions] is missing in the RBAC config.");
+		{
+			return $this->error("The [permissions] is missing in the RBAC config.");
+		}
 
 
 		if( isset($config['roles']) )
@@ -196,22 +208,22 @@ abstract class RbacController extends \yii\console\Controller
 					elseif(!\is_string($key) and \is_array($val) )
 					{
 						if(empty($val['name']))
-							throw new Exception("The roles[$key] value array must have the [name] key.");
+							return $this->error("The roles[$key] value array must have the [name] key.");
 					}
 					else
 					{
-						throw new Exception("The roles[$key] value must be string or array or instance of Role.");
+						return $this->error("The roles[$key] value must be string or array or instance of Role.");
 					}
 				}
 			}
 			else
 			{
-				throw new Exception("The [roles] must be array.");
+				return $this->error("The [roles] must be array.");
 			}
 
 		}
 		else
-			throw new Exception("The [roles] is missing in the RBAC config.");
+			return $this->error("The [roles] is missing in the RBAC config.");
 
 
 
@@ -225,24 +237,24 @@ abstract class RbacController extends \yii\console\Controller
 					{
 						if(!\class_exists($key))
 						{
-							throw new Exception("Class [$key] not found.");
+							return $this->error("Class [$key] not found.");
 						}
 					}
 					else
-						throw new Exception("The rule keys must be string (rule class name).");
+						return $this->error("The rule keys must be string (rule class name).");
 
 
 					$val = (array)$val;
 					foreach($val as $item)
 					{
 						if(!\is_string($item))
-							throw new Exception("The rules[$key] value must be string or array of strings.");
+							return $this->error("The rules[$key] value must be string or array of strings.");
 					}
 				}
 			}
 			else
 			{
-				throw new Exception("The [rules] must be array (key is rule class name).");
+				return $this->error("The [rules] must be array (key is rule class name).");
 			}
 		}
 
@@ -254,25 +266,24 @@ abstract class RbacController extends \yii\console\Controller
 				foreach($config['access'] as $key => $val)
 				{
 					if(!is_string($key))
-						throw new Exception("The access key must be string (permission name or role name).");
+						return $this->error("The access key must be string (permission name or role name).");
 
 					$val = (array)$val;
 					foreach($val as $item)
 					{
 						if(!\is_string($item))
-							throw new Exception("The access[$key] value must be string or array of strings (permission name or role name).");
+							return $this->error("The access[$key] value must be string or array of strings (permission name or role name).");
 					}
 				}
 			}
 			else
 			{
-				throw new Exception("The [access] must be array.");
+				return $this->error("The [access] must be array.");
 			}
 		}
 		else
-			throw new Exception("The [access] is missing in the RBAC config.");
+			return $this->error("The [access] is missing in the RBAC config.");
 	}
-
 
 	/**
 	 * Performs initial RBAC configuration (remembers user roles, deletes all data, revert data from the config, restores users roles).
@@ -319,7 +330,7 @@ abstract class RbacController extends \yii\console\Controller
 				}
 				else
 				{
-					throw new Exception("The rule key must be string of class name.");
+					return $this->error("The rule key must be string of class name.");
 				}
 
 
@@ -379,7 +390,7 @@ abstract class RbacController extends \yii\console\Controller
 			}
 			else
 			{
-				throw new Exception("The permission value must be string or instance of Permission (permissions[$permissionName]).");
+				return $this->error("The permission value must be string or instance of Permission (permissions[$permissionName]).");
 			}
 
 			$withRule = "";
@@ -431,7 +442,7 @@ abstract class RbacController extends \yii\console\Controller
 			}
 			else
 			{
-				throw new Exception("The role value must be string or instance of Role (roles[$roleName]).");
+				return $this->error("The role value must be string or instance of Role (roles[$roleName]).");
 			}
 
 			$withRule = "";
@@ -592,7 +603,7 @@ abstract class RbacController extends \yii\console\Controller
 			}
 			else
 			{
-				print "...no users\n";
+				$this->stdout("...no users\n",  Console::FG_YELLOW);
 			}
 
 
@@ -601,7 +612,7 @@ abstract class RbacController extends \yii\console\Controller
 		}
 		else
 		{
-			print "...roles empty\n";
+			$this->stdout("...roles empty\n",  Console::FG_YELLOW);
 		}
 
 		print "\n";
@@ -791,7 +802,7 @@ abstract class RbacController extends \yii\console\Controller
 
 		if(empty($items))
 		{
-			print "...empty\n";
+			$this->stdout("...empty\n", Console::FG_YELLOW);
 		}
 		else
 		{
@@ -829,7 +840,7 @@ abstract class RbacController extends \yii\console\Controller
 
 		if(empty($items))
 		{
-			print "...empty\n";
+			$this->stdout("...empty\n", Console::FG_YELLOW);
 		}
 		else
 		{
@@ -866,7 +877,7 @@ abstract class RbacController extends \yii\console\Controller
 
 		if(is_null($identity))
 		{
-			print "User [$username] is not found.\n\n";
+			$this->stdout("User [$username] is not found.\n", Console::FG_RED);
 			return ExitCode::DATAERR;
 		}
 
@@ -891,7 +902,7 @@ abstract class RbacController extends \yii\console\Controller
 		}
 		else
 		{
-			print "...empty\n";
+			$this->stdout("...empty\n", Console::FG_YELLOW);
 		}
 
 		print "\n";
@@ -912,7 +923,7 @@ abstract class RbacController extends \yii\console\Controller
 		}
 		else
 		{
-			print "...empty\n";
+			$this->stdout("...empty\n", Console::FG_YELLOW);
 		}
 		return ExitCode::OK;
 	}
