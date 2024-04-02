@@ -5,6 +5,7 @@
 namespace gozoro\rbac\console;
 
 use Yii;
+use yii\console\Exception as ConsoleException;
 use yii\console\ExitCode;
 use yii\helpers\Console;
 
@@ -39,7 +40,7 @@ use yii\rbac\Rule;
  *			\WriteRule:class => ['write'], // rule for permission "write"
  *	   ],
  *
- *    // Mapping roles to permissions
+ *    // Mapping roles/permissions to roles/permissions
  *    'access' => [
  *        'role_admin' => ['read', 'write'], // array of permissions
  *        'role_manager' => ['read'],
@@ -50,8 +51,6 @@ use yii\rbac\Rule;
 abstract class RbacController extends \yii\console\Controller
 {
 	public $defaultAction = 'show';
-
-
 
 
 	/**
@@ -84,15 +83,6 @@ abstract class RbacController extends \yii\console\Controller
 	}
 
 	/**
-	 * Print error and exit
-	 */
-	protected function error($errMessage)
-	{
-		$this->stdout("$errMessage\n\n", Console::FG_RED);
-		return ExitCode::UNSPECIFIED_ERROR;
-	}
-
-	/**
 	 * Returns path to RBAC-config
 	 * @return string
 	 */
@@ -102,7 +92,7 @@ abstract class RbacController extends \yii\console\Controller
 	}
 
 	/**
-	 * Returns config array
+	 * Returns config array.
 	 * @return array
 	 */
 	public function getConfig()
@@ -116,13 +106,13 @@ abstract class RbacController extends \yii\console\Controller
 		}
 		else
 		{
-			return $this->error("RBAC config $configfile is not exist.");
+			throw new ConsoleException("RBAC config $configfile is not exist.");
 		}
 	}
 
 
 	/**
-	 * Displays config
+	 * Displays config.
 	 */
 	public function actionShowConfig()
 	{
@@ -138,11 +128,14 @@ abstract class RbacController extends \yii\console\Controller
 	}
 
 
-
-
-	protected function initVerify()
+	/**
+	 * Verify key "perimissions" in configuration file.
+	 * Returns TRUE when success.
+	 * @return bool
+	 */
+	protected function verifyPermissions()
 	{
- 		$config = $this->getConfig();
+		$config = $this->getConfig();
 
 		if( isset($config['permissions']) )
 		{
@@ -166,26 +159,35 @@ abstract class RbacController extends \yii\console\Controller
 					{
 						if(empty($val['name']))
 						{
-							return $this->error("The permissions[$key] value array must have the [name] key.");
-
+							$this->stdout("The permissions[$key] value array must have the [name] key.\n\n", Console::FG_RED);
+							return false;
 						}
 					}
 					else
 					{
-						return $this->error("The permissions[$key] value must be string or array or instance of Permission.");
+						$this->stdout("The permissions[$key] value must be string or array or instance of Permission.\n\n", Console::FG_RED);
+						return false;
 					}
 				}
 			}
 			else
 			{
-				return $this->error("The [permissions] must be array.");
+				$this->stdout("The [permissions] must be array.\n\n", Console::FG_RED);
+				return false;
 			}
 		}
-		else
-		{
-			return $this->error("The [permissions] is missing in the RBAC config.");
-		}
 
+		return true;
+	}
+
+	/**
+	 * Verify key "roles" in configuration file.
+	 * Returns TRUE when success.
+	 * @return bool
+	 */
+	protected function verifyRoles()
+	{
+		$config = $this->getConfig();
 
 		if( isset($config['roles']) )
 		{
@@ -208,24 +210,37 @@ abstract class RbacController extends \yii\console\Controller
 					elseif(!\is_string($key) and \is_array($val) )
 					{
 						if(empty($val['name']))
-							return $this->error("The roles[$key] value array must have the [name] key.");
+						{
+							$this->stdout("The roles[$key] value array must have the [name] key.\n\n", Console::FG_RED);
+							return false;
+						}
+
 					}
 					else
 					{
-						return $this->error("The roles[$key] value must be string or array or instance of Role.");
+						$this->stdout("The roles[$key] value must be string or array or instance of Role.\n\n", Console::FG_RED);
+						return false;
 					}
 				}
 			}
 			else
 			{
-				return $this->error("The [roles] must be array.");
+				$this->stdout("The [roles] must be array.\n\n", Console::FG_RED);
+				return false;
 			}
-
 		}
-		else
-			return $this->error("The [roles] is missing in the RBAC config.");
 
+		return true;
+	}
 
+	/**
+	 * Verify key "rules" in configuration file.
+	 * Returns TRUE when success.
+	 * @return bool
+	 */
+	protected function verifyRules()
+	{
+		$config = $this->getConfig();
 
 		if(isset($config['rules']))
 		{
@@ -237,27 +252,46 @@ abstract class RbacController extends \yii\console\Controller
 					{
 						if(!\class_exists($key))
 						{
-							return $this->error("Class [$key] not found.");
+							$this->stdout("Class [$key] not found.\n\n", Console::FG_RED);
+							return false;
 						}
 					}
 					else
-						return $this->error("The rule keys must be string (rule class name).");
+					{
+						$this->stdout("The rule keys must be string (rule class name).\n\n", Console::FG_RED);
+						return false;
+					}
 
 
 					$val = (array)$val;
 					foreach($val as $item)
 					{
 						if(!\is_string($item))
-							return $this->error("The rules[$key] value must be string or array of strings.");
+						{
+							$this->stdout("The rules[$key] value must be string or array of strings.\n\n", Console::FG_RED);
+							return false;
+						}
 					}
 				}
 			}
 			else
 			{
-				return $this->error("The [rules] must be array (key is rule class name).");
+				$this->stdout("The [rules] must be array (key is rule class name).\n\n", Console::FG_RED);
+				return false;
 			}
 		}
 
+		return true;
+	}
+
+	/**
+	 * Verify key "access" in configuration file.
+	 * Returns TRUE when success.
+	 * @return bool
+	 */
+	protected function verifyAccess()
+	{
+		$config = $this->getConfig();
 
 		if( isset($config['access']) )
 		{
@@ -266,27 +300,44 @@ abstract class RbacController extends \yii\console\Controller
 				foreach($config['access'] as $key => $val)
 				{
 					if(!is_string($key))
-						return $this->error("The access key must be string (permission name or role name).");
+					{
+						$this->stdout("The access key must be string (permission name or role name).\n\n", Console::FG_RED);
+						return false;
+					}
 
 					$val = (array)$val;
 					foreach($val as $item)
 					{
 						if(!\is_string($item))
-							return $this->error("The access[$key] value must be string or array of strings (permission name or role name).");
+						{
+							$this->stdout("The access[$key] value must be string or array of strings (permission name or role name).\n\n", Console::FG_RED);
+							return false;
+						}
 					}
 				}
 			}
 			else
 			{
-				return $this->error("The [access] must be array.");
+				$this->stdout("The [access] must be array.\n\n", Console::FG_RED);
+				return false;
 			}
 		}
 		else
-			return $this->error("The [access] is missing in the RBAC config.");
+		{
+			$this->stdout("The [access] is missing in the RBAC config.\n\n", Console::FG_RED);
+			return false;
+		}
+
+		return true;
 	}
 
+
+
+
+
 	/**
-	 * Performs initial RBAC configuration (remembers user roles, deletes all data, revert data from the config, restores users roles).
+	 * Performs initial RBAC configuration (remembers user roles and permissions,
+	 * deletes all data, revert data from the config, restores users roles) and permissions.
 	 * You can use it after adding new roles or removing not need roles.
 	 */
 	public function actionInit()
@@ -298,30 +349,63 @@ abstract class RbacController extends \yii\console\Controller
 		}
 
 
- 		$config      = $this->getConfig();
+		$config      = $this->getConfig();
  		$authManager = $this->getAuthManager();
- 		$userRoles   = [];
-
-		$this->initVerify();
 
 
-		print "Get user roles: ";
+
+		if(!$this->verifyPermissions()
+			or !$this->verifyRoles()
+			or !$this->verifyRules()
+			or !$this->verifyAccess()
+		)
+		{
+			return ExitCode::UNSPECIFIED_ERROR;
+		}
+
+
+		print "Remembering users roles: ";
+		$role2users = [];
 		foreach($authManager->getRoles() as $role)
 		{
-			$userRoles[ $role->name ] = $authManager->getUserIdsByRole($role->name);
+			$role2users[ $role->name ] = $authManager->getUserIdsByRole($role->name);
 		}
 		$this->stdout("OK\n", Console::FG_GREEN);
 
-		print "Clear RBAC data: ";
+
+
+
+		print "Remembering free users permissions: ";
+		$user2permissions = [];
+		foreach($role2users as $roleName => $userIds)
+		{
+			foreach($userIds as $userId)
+			{
+				if(!isset($user2permissions[$userId]))
+				{
+					$user2permissions[$userId] = [];
+					$freePerms = $this->getFreeUserPermissions($userId);
+					foreach($freePerms as $p)
+					{
+						$user2permissions[$userId][] = $p->name;
+					}
+				}
+			}
+		}
+		$this->stdout("OK\n", Console::FG_GREEN);
+
+
+
+
+
+		print "Clear all RBAC data: ";
 		$authManager->removeAll();
 		$this->stdout("OK\n", Console::FG_GREEN);
 
+
+
+
 		$rules       = [];
-		$permissions = [];
-		$roles       = [];
-
-
-
 		if(isset($config['rules']))
 		{
 			print "Configure rules:\n";
@@ -337,7 +421,7 @@ abstract class RbacController extends \yii\console\Controller
 				}
 				else
 				{
-					return $this->error("The rule key must be string of class name.");
+					throw new ConsoleException("The rule key must be string of class name.");
 				}
 
 
@@ -359,112 +443,120 @@ abstract class RbacController extends \yii\console\Controller
 			}
 		}
 
-
-
-		print "Configure permissions:\n";
-		foreach($config['permissions'] as $permissionName => $permission)
+		$permissions = [];
+		if(isset($config['permissions']))
 		{
-			if( \is_string($permissionName) and \is_string($permission))
+			print "Configure permissions:\n";
+			foreach($config['permissions'] as $permissionName => $permission)
 			{
-				$p = $authManager->createPermission($permissionName);
-				$p->description = $permission;
-				$permission = $p;
-			}
-			elseif($permission instanceof Permission)
-			{
-				// ok
-			}
-			elseif(\is_array($permission))
-			{
-				$p = new Permission();
+				if( \is_string($permissionName) and \is_string($permission))
+				{
+					$p = $authManager->createPermission($permissionName);
+					$p->description = $permission;
+					$permission = $p;
+				}
+				elseif($permission instanceof Permission)
+				{
+					// ok
+				}
+				elseif(\is_array($permission))
+				{
+					$p = new Permission();
 
-				if(!empty($permission['description']))
-					$p->description = $permission['description'];
+					if(!empty($permission['description']))
+						$p->description = $permission['description'];
 
-				if(!empty($permission['name']))
-					$p->name = $permission['name'];
+					if(!empty($permission['name']))
+						$p->name = $permission['name'];
+					else
+						$p->name = $permissionName;
+
+					if(!empty($permission['data']))
+						$p->data = $permission['data'];
+
+
+					if( !isset($permission['description']) and !isset($permission['name']) and !isset($permission['data']) )
+						$p->data = $permission;
+
+					$permission = $p;
+				}
 				else
-					$p->name = $permissionName;
+				{
+					throw new ConsoleException("The permission value must be string or instance of Permission (permissions[$permissionName]).");
+				}
 
-				if(!empty($permission['data']))
-					$p->data = $permission['data'];
+				$withRule = "";
+				if(isset($rules[$permissionName]))
+				{
+					$permission->ruleName = $rules[$permissionName]->name;
+					$withRule = " with rule [".$permission->ruleName."]";
+				}
 
-
-				if( !isset($permission['description']) and !isset($permission['name']) and !isset($permission['data']) )
-					$p->data = $permission;
-
-				$permission = $p;
+				$authManager->add( $permission );
+				$permissions[$permissionName] = $permission;
+				$this->stdout(" + add permission [".$permission->name."]$withRule - ".$permission->description."\n", Console::FG_GREEN);
 			}
-			else
-			{
-				return $this->error("The permission value must be string or instance of Permission (permissions[$permissionName]).");
-			}
-
-			$withRule = "";
-			if(isset($rules[$permissionName]))
-			{
-				$permission->ruleName = $rules[$permissionName]->name;
-				$withRule = " with rule [".$permission->ruleName."]";
-			}
-
-			$authManager->add( $permission );
-			$permissions[$permissionName] = $permission;
-			$this->stdout(" + add permission [".$permission->name."]$withRule - ".$permission->description."\n", Console::FG_GREEN);
 		}
 
 
-		print "Configure roles:\n";
-		foreach($config['roles'] as $roleName => $role)
+
+
+
+		if(isset($config['roles']))
 		{
-			if(\is_string($role))
+			print "Configure roles:\n";
+			foreach($config['roles'] as $roleName => $role)
 			{
-				$r = $authManager->createRole($roleName);
-				$r->description = $role;
-				$role = $r;
-			}
-			elseif($role instanceof Role)
-			{
-				$role->name = $roleName;
-			}
-			elseif(\is_array($role))
-			{
-				$r = new Role();
+				if(\is_string($role))
+				{
+					$r = $authManager->createRole($roleName);
+					$r->description = $role;
+					$role = $r;
+				}
+				elseif($role instanceof Role)
+				{
+					$role->name = $roleName;
+				}
+				elseif(\is_array($role))
+				{
+					$r = new Role();
 
-				if(!empty($role['description']))
-					$r->description = $role['description'];
+					if(!empty($role['description']))
+						$r->description = $role['description'];
 
-				if(!empty($role['name']))
-					$r->name = $role['name'];
+					if(!empty($role['name']))
+						$r->name = $role['name'];
+					else
+						$r->name = $roleName;
+
+					if(!empty($role['data']))
+						$r->data = $role['data'];
+
+
+					if( !isset($role['description']) and !isset($role['name']) and !isset($role['data']) )
+						$r->data = $role;
+
+					$role = $r;
+				}
 				else
-					$r->name = $roleName;
+				{
+					throw new ConsoleException("The role value must be string or instance of Role (roles[$roleName]).");
+				}
 
-				if(!empty($role['data']))
-					$r->data = $role['data'];
+				$withRule = "";
+				if(isset($rules[$roleName]))
+				{
+					$role->ruleName = $rules[$roleName]->name;
+					$withRule = " with rule [".$role->ruleName."]";
+				}
+
+				$role->name = $roleName;
 
 
-				if( !isset($role['description']) and !isset($role['name']) and !isset($role['data']) )
-					$r->data = $role;
-
-				$role = $r;
+				$authManager->add( $role );
+				$roles[ $roleName ] = $role;
+				$this->stdout(" + add role [".$role->name."]$withRule - ".$role->description."\n", Console::FG_GREEN);
 			}
-			else
-			{
-				return $this->error("The role value must be string or instance of Role (roles[$roleName]).");
-			}
-
-			$withRule = "";
-			if(isset($rules[$roleName]))
-			{
-				$role->ruleName = $rules[$roleName]->name;
-				$withRule = " with rule [".$role->ruleName."]";
-			}
-
-			$role->name = $roleName;
-
-
-			$authManager->add( $role );
-			$roles[ $roleName ] = $role;
-			$this->stdout(" + add role [".$role->name."]$withRule - ".$role->description."\n", Console::FG_GREEN);
 		}
 
 
@@ -533,7 +625,6 @@ abstract class RbacController extends \yii\console\Controller
 						$this->stdout(" - error: access item is not a string.", Console::FG_RED);
 					}
 				}
-
 			}
 			else
 			{
@@ -542,15 +633,28 @@ abstract class RbacController extends \yii\console\Controller
 		}
 
 
-		print "Configure users: ";
-		foreach($userRoles as $roleName => $userIds)
+		print "Configure user role assigments: ";
+		foreach($role2users as $roleName => $userIds)
 		{
 			$role = $authManager->getRole($roleName);
 
 			if(!is_null($role))
-			foreach($userIds as $userId)
+				foreach($userIds as $userId)
+				{
+					$authManager->assign($role, $userId);
+				}
+		}
+		$this->stdout("OK\n", Console::FG_GREEN);
+
+		print "Configure user permission assigments: ";
+		foreach($user2permissions as $userId => $freePermissionNames)
+		{
+			foreach($freePermissionNames as $permName)
 			{
-				$authManager->assign($role, $userId);
+				$perm = $authManager->getPermission($permName);
+
+				if(!is_null($perm))
+					$authManager->assign($perm, $userId);
 			}
 		}
 		$this->stdout("OK\n", Console::FG_GREEN);
@@ -561,7 +665,7 @@ abstract class RbacController extends \yii\console\Controller
 
 
 	/**
-	 * Displays a list of roles and users
+	 * Displays a list of roles and users.
 	 */
 	public function actionShow()
 	{
@@ -611,8 +715,6 @@ abstract class RbacController extends \yii\console\Controller
 				$this->stdout("...no users\n",  Console::FG_YELLOW);
 			}
 
-
-
 			print "\n";
 		}
 		else
@@ -621,7 +723,6 @@ abstract class RbacController extends \yii\console\Controller
 		}
 
 		print "\n";
-
 		return ExitCode::OK;
 	}
 
@@ -633,7 +734,6 @@ abstract class RbacController extends \yii\console\Controller
 	 */
 	public function actionAssign($rolename, $username)
 	{
-		print "\n";
 		$authManager = $this->getAuthManager();
 		$perm        = $authManager->getPermission($rolename);
 		$role        = $authManager->getRole($rolename);
@@ -652,7 +752,8 @@ abstract class RbacController extends \yii\console\Controller
 
 		if(empty($item))
 		{
-			return $this->error("Role [$rolename] is not found.\nPermission [$rolename] is not found.");
+			$this->stdout("Role [$rolename] is not found.\nPermission [$rolename] is not found.", Console::FG_YELLOW);
+			return ExitCode::UNSPECIFIED_ERROR;
 		}
 
 
@@ -660,7 +761,8 @@ abstract class RbacController extends \yii\console\Controller
 
 		if(is_null($identity))
 		{
-			return $this->error("User [$username] is not found.");
+			$this->stdout("User [$username] is not found.", Console::FG_YELLOW);
+			return ExitCode::UNSPECIFIED_ERROR;
 		}
 
 		$userId = $identity->getId();
@@ -671,7 +773,8 @@ abstract class RbacController extends \yii\console\Controller
 			$userRoles = $authManager->getRolesByUser($userId);
 			if(isset($userRoles[$rolename]))
 			{
-				return $this->error("User [$username] already has a role [$rolename].");
+				$this->stdout("User [$username] already has a role [$rolename].\n\n", Console::FG_YELLOW);
+				return ExitCode::OK;
 			}
 		}
 		else
@@ -679,7 +782,8 @@ abstract class RbacController extends \yii\console\Controller
 			$userPermissions = $authManager->getPermissionsByUser($userId);
 			if(isset($userPermissions[$rolename]))
 			{
-				return $this->error("User [$username] already has a permission [$rolename].");
+				$this->stdout("User [$username] already has a permission [$rolename].\n\n", Console::FG_YELLOW);
+				return ExitCode::OK;
 			}
 		}
 
@@ -687,12 +791,13 @@ abstract class RbacController extends \yii\console\Controller
 
 		if($authManager->assign($item, $userId))
 		{
-			$this->stdout("The user [$username] was successfully assigned to the $type [$rolename].\n", Console::FG_GREEN);
+			$this->stdout("The user [$username] was successfully assigned to the $type [$rolename].\n\n", Console::FG_GREEN);
 			return ExitCode::OK;
 		}
 		else
 		{
-			return $this->error("The $type failed assigned.");
+			$this->stdout("The $type failed assigned.\n\n");
+			return ExitCode::UNSPECIFIED_ERROR;
 		}
 
 		return ExitCode::OK;
@@ -728,7 +833,8 @@ abstract class RbacController extends \yii\console\Controller
 
 		if(empty($item))
 		{
-			return $this->error("Role [$rolename] is not found.\nPermission [$rolename] is not found.");
+			$this->stdout("Role [$rolename] is not found.\nPermission [$rolename] is not found.\n\n", Console::FG_YELLOW);
+			return ExitCode::UNSPECIFIED_ERROR;
 		}
 
 
@@ -736,7 +842,8 @@ abstract class RbacController extends \yii\console\Controller
 
 		if(is_null($identity))
 		{
-			return $this->error("User [$username] is not found.");
+			$this->stdout("User [$username] is not found.\n\n", Console::FG_YELLOW);
+			return ExitCode::UNSPECIFIED_ERROR;
 		}
 
 		$userId = $identity->getId();
@@ -749,7 +856,8 @@ abstract class RbacController extends \yii\console\Controller
 		}
 		else
 		{
-			return $this->error("The $type failed revoked.");
+			$this->stdout("The $type failed revoked.\n\n", Console::FG_RED);
+			return ExitCode::UNSPECIFIED_ERROR;
 		}
 	}
 
@@ -765,7 +873,8 @@ abstract class RbacController extends \yii\console\Controller
 
 		if(is_null($identity))
 		{
-			return $this->error("User [$username] is not found.\n\n");
+			$this->stdout("User [$username] is not found.\n\n", Console::FG_YELLOW);
+			return ExitCode::UNSPECIFIED_ERROR;
 		}
 
 		$userId = $identity->getId();
@@ -773,14 +882,13 @@ abstract class RbacController extends \yii\console\Controller
 		if($authManager->revokeAll($userId))
 		{
 			$this->stdout("Revoked all roles from user [$username].\n\n",  Console::FG_GREEN);
+			return ExitCode::OK;
 		}
 		else
 		{
 			$this->stdout("Failed revoke from [$username].\n\n", Console::FG_RED);
+			return ExitCode::UNSPECIFIED_ERROR;
 		}
-
-		print "\n";
-		return ExitCode::OK;
 	}
 
 
@@ -803,15 +911,20 @@ abstract class RbacController extends \yii\console\Controller
 			$rows = [];
 			foreach($items as $item)
 			{
-				$rows[] = [
-					$item->name,
-					$item->description
-				];
+				$childs = $authManager->getChildren($item->name);
+
+				$childNames = [];
+				foreach($childs as $child)
+				{
+					$childNames[] = $child->name;
+				}
+
+				$rows[] = [	$item->name, $item->description, $childNames ];
 			}
 
 
 			$table = new \yii\console\widgets\Table();
-			$table->setHeaders(['name', 'description']);
+			$table->setHeaders(['name', 'description', 'children']);
 			$table->setRows($rows);
 			print $table->run();
 		}
@@ -840,15 +953,56 @@ abstract class RbacController extends \yii\console\Controller
 			$rows = [];
 			foreach($items as $item)
 			{
+				$childs = $authManager->getChildren($item->name);
+
+				$childNames = [];
+				foreach($childs as $child)
+				{
+					$childNames[] = $child->name;
+				}
+
+				$rows[] = [ $item->name, $item->description, $childNames ];
+			}
+
+
+			$table = new \yii\console\widgets\Table();
+			$table->setHeaders(['name', 'description', 'children']);
+			$table->setRows($rows);
+			print $table->run();
+		}
+
+		print "\n";
+
+		return ExitCode::OK;
+	}
+
+	/**
+	 * Displays a list of rules from AuthManager.
+	 */
+	public function actionRules()
+	{
+		$authManager = $this->getAuthManager();
+		$items = $authManager->getRules();
+
+		print "Rules:\n";
+
+		if(empty($items))
+		{
+			$this->stdout("...empty\n", Console::FG_YELLOW);
+		}
+		else
+		{
+			$rows = [];
+			foreach($items as $item)
+			{
 				$rows[] = [
 					$item->name,
-					$item->description
 				];
 			}
 
 
 			$table = new \yii\console\widgets\Table();
-			$table->setHeaders(['name', 'description']);
+			$table->setHeaders(['name']);
 			$table->setRows($rows);
 			print $table->run();
 		}
@@ -870,7 +1024,8 @@ abstract class RbacController extends \yii\console\Controller
 
 		if(is_null($identity))
 		{
-			return $this->error("User [$username] is not found.");
+			$this->stdout("User [$username] is not found.\n\n", Console::FG_RED);
+			return ExitCode::UNSPECIFIED_ERROR;
 		}
 
 		$userId = $identity->getId();
@@ -878,17 +1033,25 @@ abstract class RbacController extends \yii\console\Controller
 		$roles = $authManager->getRolesByUser($userId);
 		$permissions = $authManager->getPermissionsByUser($userId);
 
-		print "Roles of [$username]:\n";
+		print "Roles of user [$username]:\n";
 		if($roles)
 		{
 			$rows = [];
 			foreach($roles as $role)
 			{
-				$rows[] = [$role->name, $role->description];
+				$childs = $authManager->getChildren($role->name);
+
+				$childNames = [];
+				foreach($childs as $child)
+				{
+					$childNames[] = $child->name;
+				}
+
+				$rows[] = [$role->name, $role->description, $childNames];
 			}
 
 			$table = new \yii\console\widgets\Table();
-			$table->setHeaders(['name', 'description']);
+			$table->setHeaders(['name', 'description', 'children']);
 			$table->setRows($rows);
 			print $table->run();
 		}
@@ -896,20 +1059,60 @@ abstract class RbacController extends \yii\console\Controller
 		{
 			$this->stdout("...empty\n", Console::FG_YELLOW);
 		}
-
 		print "\n";
 
-		print "Permissions of [$username]:\n";
+
+		print "Free permissions of user [$username]:\n";
+		$freePermissions = $this->getFreeUserPermissions($userId);
+		if($freePermissions)
+		{
+			$rows = [];
+			foreach($freePermissions as $perm)
+			{
+				$childs = $authManager->getChildren($perm->name);
+
+				$childNames = [];
+				foreach($childs as $child)
+				{
+					$childNames[] = $child->name;
+				}
+
+
+
+				$rows[] = [$perm->name, $perm->description, $childNames];
+			}
+
+			$table = new \yii\console\widgets\Table();
+			$table->setHeaders(['name', 'description', 'children']);
+			$table->setRows($rows);
+			print $table->run();
+		}
+		else
+		{
+			$this->stdout("...empty\n", Console::FG_YELLOW);
+		}
+		print "\n";
+
+
+		print "All permissions of user [$username]:\n";
 		if($permissions)
 		{
 			$rows = [];
 			foreach($permissions as $perm)
 			{
-				$rows[] = [$perm->name, $perm->description];
+				$childs = $authManager->getChildren($perm->name);
+
+				$childNames = [];
+				foreach($childs as $child)
+				{
+					$childNames[] = $child->name;
+				}
+
+				$rows[] = [$perm->name, $perm->description, $childNames];
 			}
 
 			$table = new \yii\console\widgets\Table();
-			$table->setHeaders(['name', 'description']);
+			$table->setHeaders(['name', 'description', 'children']);
 			$table->setRows($rows);
 			print $table->run();
 		}
@@ -918,5 +1121,68 @@ abstract class RbacController extends \yii\console\Controller
 			$this->stdout("...empty\n", Console::FG_YELLOW);
 		}
 		return ExitCode::OK;
+	}
+
+
+	/**
+	 * Returns free permissions assgned to user.
+	 * @param mixed $userId
+	 * @return Permission[]
+	 */
+	protected function getFreeUserPermissions($userId)
+	{
+		$authManager = $this->getAuthManager();
+		$roles       = $authManager->getRolesByUser($userId);
+		$permissions = $authManager->getPermissionsByUser($userId);
+
+		$allRolePermissions = [];
+		foreach($roles as $role)
+		{
+			$rolePermissions = $authManager->getPermissionsByRole($role->name);
+
+			foreach($rolePermissions as $rp)
+			{
+				$allRolePermissions[$rp->name] = $rp->name;
+			}
+		}
+
+		$allPermissionsWithoutRoles = [];
+		foreach($permissions as $p)
+		{
+			if(!isset($allRolePermissions[$p->name]))
+			{
+				$allPermissionsWithoutRoles[] = $p;
+			}
+		}
+		unset($allRolePermissions);
+
+
+		$assocPerms = [];
+		foreach ($allPermissionsWithoutRoles as $p)
+		{
+			$assocPerms[$p->name] = $p;
+		}
+
+
+		foreach ($allPermissionsWithoutRoles as $p)
+		{
+			$childs = $authManager->getChildren($p->name);
+
+			foreach($childs as $child)
+			{
+				if(isset($assocPerms[$child->name]))
+				{
+					unset($assocPerms[$child->name]);
+				}
+			}
+		}
+		unset($allPermissionsWithoutRoles);
+
+		$permissionsWithoutRoles = [];
+		foreach($assocPerms as $p)
+		{
+			$permissionsWithoutRoles[] = $p;
+		}
+		return $permissionsWithoutRoles;
 	}
 }
