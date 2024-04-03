@@ -2,7 +2,7 @@
 
 
 
-namespace gozoro\rbac\console;
+namespace gozoro\yii2\rbac\console;
 
 use Yii;
 use yii\console\Exception as ConsoleException;

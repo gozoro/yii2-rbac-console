@@ -17,7 +17,7 @@
 	},
 	"autoload": {
 		"psr-4": {
-			"gozoro\\rbac\\console\\": "src"
+			"gozoro\\yii2\\rbac\\console\\": "src"
 		}
 	}
 }

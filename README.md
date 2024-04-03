@@ -53,11 +53,13 @@ You can use it after adding new roles or removing not need roles.
 
 - `rbac/permissions` Displays a list of permissions from AuthManager.
 
+- `rbac/rules` Displays a list of rules from AuthManager.
+
 - `rbac/show` (default) Displays a list of roles and users.
 
-- `rbac/assign` Assigns a role (or a permission) to a user.
-    
 - `rbac/show-user` Displays roles and permissions of user.
+
+- `rbac/assign` Assigns a role (or a permission) to a user.
 
 - `rbac/unassign` Revokes role or permission from a user.
 
@@ -76,8 +78,8 @@ Example:
  		'read' => 'permissions for read something',   // permission_name => description
     	'write' => 'permissions for write something', // permission_name => description
 
-		'special' => $permision, // permission_name => permission object
-		'special2' => [ // permission_name => permission as array
+		'permission_master' => $permision, // permission_name => permission object
+		'permission_slave' => [ // permission_name => permission as array
 			'name' => ...,
 			'description' => ...,
 			'data' => ...,
@@ -105,12 +107,13 @@ Example:
  
      // Mapping roles to permissions
 	'access' => [
+		'permission_master' => ['permission_slave'],
 		'role_admin' => ['read', 'write'], // array of permissions
-		'role_manager' => ['read'],
+		'role_manager' => ['read', 'permission_master'],
 	],
 ]; 
 ```
 
-Use command `./yii rbac/init` to initialize or re-initialize.
+Use command `./yii rbac/init` to initialize or re-initialize RBAC-scheme from config.
 
 
